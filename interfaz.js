@@ -101,10 +101,6 @@ function mostrarTablaDelMes() {
     total: registrosDelMes.filter((registro) => registro.identificador_del_miembro === miembro.identificador)
       .reduce((suma, registro) => suma + Number(registro.monto_en_dolares || 0), 0),
   }));
-  const filasDeLaTabla = registrosDelMes.map((registro) => {
-    const miembroDelGrupo = miembrosDelGrupo.find((miembro) => miembro.identificador === registro.identificador_del_miembro);
-    return `<tr><td>${formatearFecha(registro.fecha_del_registro)}</td><td>${escaparTexto(miembroDelGrupo?.nombre_completo ?? 'Miembro eliminado')}</td><td><span class="etiqueta ${registro.asistio ? 'etiqueta-vino' : 'etiqueta-ausente'}">${registro.asistio ? 'Sí vino a ensayo' : 'No vino'}</span></td><td class="monto-tabla">$${Number(registro.monto_en_dolares || 0).toFixed(2)}</td></tr>`;
-  }).join('');
   contenidoPrincipal.innerHTML = `
     <section class="vista" aria-labelledby="titulo-vista">
       <div class="saludo"><p class="sobretitulo">RESUMEN DEL GRUPO</p><h1 id="titulo-vista">Tabla del mes</h1><p>Consulta asistencias y aportes registrados.</p></div>
@@ -112,8 +108,6 @@ function mostrarTablaDelMes() {
       <div class="tarjeta-totales"><div class="resumen-linea"><div><p class="sobretitulo">DÓLARES DEL MES</p><h2>Por miembro</h2></div><span class="insignia-dolar">$</span></div>
       ${totalesDelMes.length ? `<ul class="lista-totales">${totalesDelMes.map((totalDelMiembro) => `<li><span>${escaparTexto(totalDelMiembro.nombre)}</span><strong>$${totalDelMiembro.total.toFixed(2)}</strong></li>`).join('')}</ul>` : '<p class="texto-suave">Agrega miembros para ver sus totales.</p>'}</div>
       <div class="tarjeta-dia"><div class="selector-dia"><div><p class="sobretitulo">VER ASISTENCIA</p><h2>Elige un día</h2></div><input id="selector-dia-mes" type="date" value="${diaSeleccionadoDelMes}" min="${mesEnFormatoISO}-01" max="${mesEnFormatoISO}-${ultimoDiaDelMes}" aria-label="Elige un día del mes"></div><h3 class="titulo-detalle-dia">Asistencia del ${formatearFecha(diaSeleccionadoDelMes)}</h3>${crearListaDeAsistenciaDelDia(miembrosDelGrupo, registrosDelDiaSeleccionado)}</div>
-      <div class="resumen-linea encabezado-registros"><h2>Registros del mes</h2><span>${registrosDelMes.length} ${registrosDelMes.length === 1 ? 'registro' : 'registros'}</span></div>
-      ${registrosDelMes.length ? `<div class="envoltura-tabla"><table><thead><tr><th>Fecha</th><th>Miembro</th><th>Asistencia</th><th>Monto</th></tr></thead><tbody>${filasDeLaTabla}</tbody></table></div>` : crearEstadoVacio('Todavía no hay registros', 'Cuando marques una asistencia, aparecerá aquí.')}
       <button class="enlace-respaldo" data-accion="respaldo">Guardar o restaurar un respaldo <span aria-hidden="true">→</span></button>
     </section>`;
   contenidoPrincipal.querySelectorAll('[data-mover-mes]').forEach((boton) => boton.addEventListener('click', () => {
