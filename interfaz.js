@@ -5,6 +5,8 @@ import {
   agregarMiembro,
   guardarRegistroDelDia,
   registrarDolarPorAusencia,
+  registrarPagoDelMiembro,
+  obtenerResumenDeDeudaDelMiembro,
   borrarRegistroDelDia,
   obtenerRegistrosDelMes,
   descargarRespaldo,
@@ -185,7 +187,7 @@ function mostrarMiembros() {
       <div class="saludo"><p class="sobretitulo">TU GRUPO</p><h1 id="titulo-vista">Miembros</h1><p>Administra las personas de tu registro.</p></div>
       <form id="formulario-miembro" class="formulario-miembro"><label for="nombre-miembro">Nombre de la persona</label><div class="campo-agregar"><input id="nombre-miembro" name="nombre" type="text" maxlength="90" placeholder="Por ejemplo, Ana López" autocomplete="name" required><button class="boton-principal" type="submit"><span aria-hidden="true">+</span> Agregar</button></div></form>
       <div class="resumen-linea"><h2>Lista de miembros</h2><span>${miembrosDelGrupo.length}</span></div>
-      <ul class="lista-miembros">${miembrosDelGrupo.length ? miembrosDelGrupo.map((miembroDelGrupo) => `<li><span class="avatar-inicial">${escaparTexto(miembroDelGrupo.nombre_completo.trim().charAt(0).toLocaleUpperCase('es'))}</span><span>${escaparTexto(miembroDelGrupo.nombre_completo)}</span></li>`).join('') : `<li class="mensaje-lista">Todavía no has agregado a nadie.</li>`}</ul>
+      <ul class="lista-miembros">${miembrosDelGrupo.length ? miembrosDelGrupo.map(crearFilaDeMiembro).join('') : `<li class="mensaje-lista">Todavía no has agregado a nadie.</li>`}</ul>
       <button class="enlace-respaldo" data-accion="respaldo">Guardar o restaurar un respaldo <span aria-hidden="true">→</span></button>
     </section>`;
   contenidoPrincipal.querySelector('#formulario-miembro').addEventListener('submit', (eventoDelFormulario) => {
@@ -200,6 +202,38 @@ function mostrarMiembros() {
     }
   });
   contenidoPrincipal.querySelector('[data-accion="respaldo"]')?.addEventListener('click', () => navegarA('respaldo'));
+  contenidoPrincipal.querySelectorAll('[data-accion="registrar-pago"]').forEach((botonDePago) => {
+    botonDePago.addEventListener('click', registrarPagoDesdeLaLista);
+  });
+}
+
+// Prepara la deuda vigente de cada persona y su acceso para registrar un pago.
+function crearFilaDeMiembro(miembroDelGrupo) {
+  const resumenDeDeuda = obtenerResumenDeDeudaDelMiembro(miembroDelGrupo.identificador);
+  const textoDeuda = resumenDeDeuda.saldo_pendiente > 0
+    ? `Debe $${resumenDeDeuda.saldo_pendiente.toFixed(2)}`
+    : 'Al día';
+  const botonDePago = resumenDeDeuda.saldo_pendiente > 0
+    ? `<button class="boton-pago" data-accion="registrar-pago" data-miembro="${miembroDelGrupo.identificador}" data-saldo="${resumenDeDeuda.saldo_pendiente.toFixed(2)}">Registrar pago</button>`
+    : '';
+  return `<li class="fila-miembro"><span class="avatar-inicial">${escaparTexto(miembroDelGrupo.nombre_completo.trim().charAt(0).toLocaleUpperCase('es'))}</span><span class="datos-miembro"><strong>${escaparTexto(miembroDelGrupo.nombre_completo)}</strong><small class="${resumenDeDeuda.saldo_pendiente > 0 ? 'saldo-deuda' : 'saldo-al-dia'}">${textoDeuda}</small></span>${botonDePago}</li>`;
+}
+
+// Registra un monto parcial o el total pendiente y luego actualiza la lista.
+function registrarPagoDesdeLaLista(eventoDelBoton) {
+  const botonDePago = eventoDelBoton.currentTarget;
+  const saldoPendiente = Number(botonDePago.dataset.saldo);
+  const montoIngresado = window.prompt(
+    `Saldo pendiente: $${saldoPendiente.toFixed(2)}. ¿Cuánto pagó?`,
+    saldoPendiente.toFixed(2)
+  );
+  if (montoIngresado === null) return;
+  try {
+    registrarPagoDelMiembro(botonDePago.dataset.miembro, obtenerFechaDeHoy(), montoIngresado);
+    mostrarMiembros();
+  } catch (error) {
+    window.alert(error.message || 'No se pudo registrar el pago.');
+  }
 }
 
 // Muestra las acciones para descargar y restaurar una copia de los datos.

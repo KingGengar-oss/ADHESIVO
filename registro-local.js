@@ -6,6 +6,7 @@
 // Nombres con los que se guardan las listas en el teléfono
 const LLAVE_DE_MIEMBROS = 'registro_compartido_miembros';
 const LLAVE_DE_REGISTROS = 'registro_compartido_registros';
+const LLAVE_DE_PAGOS = 'registro_compartido_pagos';
 
 // Cuánto vale el dólar que se pone cuando alguien no viene (se cambia solo aquí)
 export const MONTO_DEL_DOLAR_POR_AUSENCIA = 1;
@@ -47,6 +48,11 @@ export function obtenerFechaDeHoy() {
 
 export function obtenerMiembros() {
   return leerDelAlmacenamiento(LLAVE_DE_MIEMBROS, []);
+}
+
+// Devuelve los pagos guardados, sin exponer el acceso directo al almacenamiento.
+function obtenerPagosGuardados() {
+  return leerDelAlmacenamiento(LLAVE_DE_PAGOS, []);
 }
 
 export function agregarMiembro(nombreCompleto) {
@@ -110,6 +116,53 @@ export function borrarRegistroDelDia(identificadorDelMiembro, fechaDelRegistro) 
   escribirEnElAlmacenamiento(LLAVE_DE_REGISTROS, todosLosRegistros);
 }
 
+// Calcula cuánto debe todavía una persona sumando ausencias y restando sus pagos.
+export function obtenerResumenDeDeudaDelMiembro(identificadorDelMiembro) {
+  const todosLosRegistros = leerDelAlmacenamiento(LLAVE_DE_REGISTROS, {});
+  const pagosDelMiembro = obtenerPagosGuardados().filter(
+    (pago) => pago.identificador_del_miembro === identificadorDelMiembro
+  );
+  const deudaGeneradaEnCentavos = Object.values(todosLosRegistros)
+    .filter((registro) => registro.identificador_del_miembro === identificadorDelMiembro && !registro.asistio)
+    .reduce((suma, registro) => suma + Math.round(Number(registro.monto_en_dolares || 0) * 100), 0);
+  const pagosEnCentavos = pagosDelMiembro.reduce(
+    (suma, pago) => suma + Math.round(Number(pago.monto_en_dolares || 0) * 100), 0
+  );
+  return {
+    deuda_generada: deudaGeneradaEnCentavos / 100,
+    pagos_realizados: pagosEnCentavos / 100,
+    saldo_pendiente: Math.max(0, deudaGeneradaEnCentavos - pagosEnCentavos) / 100,
+  };
+}
+
+// Guarda un pago parcial o completo, sin permitir pagos mayores a la deuda actual.
+export function registrarPagoDelMiembro(identificadorDelMiembro, fechaDelPago, montoEnDolares) {
+  const miembroExiste = obtenerMiembros().some(
+    (miembro) => miembro.identificador === identificadorDelMiembro
+  );
+  if (!miembroExiste) throw new Error('No se encontró este miembro');
+
+  const montoEnCentavos = Math.round(Number(montoEnDolares) * 100);
+  if (!Number.isFinite(Number(montoEnDolares)) || montoEnCentavos <= 0) {
+    throw new Error('Escribe un monto de pago mayor que cero');
+  }
+
+  const saldoPendienteEnCentavos = Math.round(
+    obtenerResumenDeDeudaDelMiembro(identificadorDelMiembro).saldo_pendiente * 100
+  );
+  if (montoEnCentavos > saldoPendienteEnCentavos) {
+    throw new Error('El pago no puede ser mayor que el saldo pendiente');
+  }
+
+  const pagosGuardados = obtenerPagosGuardados();
+  pagosGuardados.push({
+    identificador_del_miembro: identificadorDelMiembro,
+    fecha_del_pago: fechaDelPago,
+    monto_en_dolares: montoEnCentavos / 100,
+  });
+  escribirEnElAlmacenamiento(LLAVE_DE_PAGOS, pagosGuardados);
+}
+
 // Devuelve los registros de un mes (mes del 1 al 12), ordenados por fecha
 export function obtenerRegistrosDelMes(anio, mes) {
   const todosLosRegistros = leerDelAlmacenamiento(LLAVE_DE_REGISTROS, {});
@@ -128,6 +181,7 @@ export function descargarRespaldo() {
     {
       miembros: obtenerMiembros(),
       registros: leerDelAlmacenamiento(LLAVE_DE_REGISTROS, {}),
+      pagos: obtenerPagosGuardados(),
     },
     null,
     2
@@ -155,10 +209,12 @@ export function restaurarRespaldo(textoDelRespaldo) {
 
   const tieneMiembros = Array.isArray(datosDelRespaldo.miembros);
   const tieneRegistros = datosDelRespaldo.registros && typeof datosDelRespaldo.registros === 'object';
-  if (!tieneMiembros || !tieneRegistros) {
+  const tienePagosValidos = datosDelRespaldo.pagos === undefined || Array.isArray(datosDelRespaldo.pagos);
+  if (!tieneMiembros || !tieneRegistros || !tienePagosValidos) {
     throw new Error('El archivo no es un respaldo válido');
   }
 
   escribirEnElAlmacenamiento(LLAVE_DE_MIEMBROS, datosDelRespaldo.miembros);
   escribirEnElAlmacenamiento(LLAVE_DE_REGISTROS, datosDelRespaldo.registros);
+  escribirEnElAlmacenamiento(LLAVE_DE_PAGOS, datosDelRespaldo.pagos || []);
 }
