@@ -18,6 +18,7 @@ const enlacesDeNavegacion = [...document.querySelectorAll('[data-pantalla]')];
 const nombresDeMeses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 let fechaSeleccionada = obtenerFechaDeHoy();
 let mesMostrado = new Date(`${fechaSeleccionada}T12:00:00`);
+let diaSeleccionadoDelMes = fechaSeleccionada;
 
 // Convierte una fecha guardada en un texto legible sin depender de UTC.
 function formatearFecha(fechaEnFormatoISO) {
@@ -58,18 +59,16 @@ function mostrarPantallaDeHoy() {
 function crearTarjetaDelMiembro(miembroDelGrupo) {
   const registroDelDia = buscarRegistroDelMiembro(miembroDelGrupo.identificador, fechaSeleccionada);
   const claseDeEstado = registroDelDia ? (registroDelDia.asistio ? 'estado-vino' : 'estado-ausente') : '';
-  const estadoVisible = registroDelDia ? `<div class="estado ${claseDeEstado}"><span class="punto-estado"></span>${registroDelDia.asistio ? 'Sí vino' : 'No vino'}${registroDelDia.asistio && registroDelDia.nota_del_registro ? `<small>“${escaparTexto(registroDelDia.nota_del_registro)}”</small>` : ''}</div>` : '';
+  const estadoVisible = registroDelDia ? `<div class="estado ${claseDeEstado}"><span class="punto-estado"></span>${registroDelDia.asistio ? 'Sí vino a ensayo' : 'No vino'}</div>` : '';
   const acciones = registroDelDia
     ? `<button class="boton-deshacer" data-accion="borrar" data-miembro="${miembroDelGrupo.identificador}">Deshacer registro</button>`
-    : `<div class="acciones-asistencia"><button class="boton-asistencia boton-vino" data-accion="asistencia" data-miembro="${miembroDelGrupo.identificador}"><span class="simbolo">✓</span><span>Sí vino</span></button><button class="boton-asistencia boton-ausente" data-accion="ausencia" data-miembro="${miembroDelGrupo.identificador}"><span class="simbolo">+$</span><span>No vino <small>(+$${MONTO_DEL_DOLAR_POR_AUSENCIA})</small></span></button></div>`;
+    : `<div class="acciones-asistencia"><button class="boton-asistencia boton-vino" data-accion="asistencia" data-miembro="${miembroDelGrupo.identificador}"><span class="simbolo">✓</span><span>Sí vino a ensayo</span></button><button class="boton-asistencia boton-ausente" data-accion="ausencia" data-miembro="${miembroDelGrupo.identificador}"><span class="simbolo">+$</span><span>No vino <small>(+$${MONTO_DEL_DOLAR_POR_AUSENCIA})</small></span></button></div>`;
   return `<article class="tarjeta-miembro ${claseDeEstado}"><div class="nombre-miembro">${escaparTexto(miembroDelGrupo.nombre_completo)}</div>${estadoVisible}${acciones}</article>`;
 }
 
-// Pide una nota opcional y registra la asistencia si la persona no cancela.
+// Registra directamente la asistencia, sin solicitar notas.
 function guardarAsistencia(eventoDelBoton) {
-  const notaDelRegistro = window.prompt('¿Quieres agregar una nota? (opcional)', '');
-  if (notaDelRegistro === null) return;
-  guardarRegistroDelDia(eventoDelBoton.currentTarget.dataset.miembro, fechaSeleccionada, notaDelRegistro.trim());
+  guardarRegistroDelDia(eventoDelBoton.currentTarget.dataset.miembro, fechaSeleccionada);
   mostrarPantallaDeHoy();
 }
 
@@ -93,6 +92,10 @@ function mostrarTablaDelMes() {
   const numeroDeMes = mesMostrado.getMonth() + 1;
   const registrosDelMes = obtenerRegistrosDelMes(anioMostrado, numeroDeMes);
   const miembrosDelGrupo = obtenerMiembros();
+  const mesEnFormatoISO = `${anioMostrado}-${String(numeroDeMes).padStart(2, '0')}`;
+  if (!diaSeleccionadoDelMes.startsWith(`${mesEnFormatoISO}-`)) diaSeleccionadoDelMes = `${mesEnFormatoISO}-01`;
+  const ultimoDiaDelMes = String(new Date(anioMostrado, numeroDeMes, 0).getDate()).padStart(2, '0');
+  const registrosDelDiaSeleccionado = registrosDelMes.filter((registro) => registro.fecha_del_registro === diaSeleccionadoDelMes);
   const totalesDelMes = miembrosDelGrupo.map((miembro) => ({
     nombre: miembro.nombre_completo,
     total: registrosDelMes.filter((registro) => registro.identificador_del_miembro === miembro.identificador)
@@ -100,7 +103,7 @@ function mostrarTablaDelMes() {
   }));
   const filasDeLaTabla = registrosDelMes.map((registro) => {
     const miembroDelGrupo = miembrosDelGrupo.find((miembro) => miembro.identificador === registro.identificador_del_miembro);
-    return `<tr><td>${formatearFecha(registro.fecha_del_registro)}</td><td>${escaparTexto(miembroDelGrupo?.nombre_completo ?? 'Miembro eliminado')}</td><td><span class="etiqueta ${registro.asistio ? 'etiqueta-vino' : 'etiqueta-ausente'}">${registro.asistio ? 'Vino' : 'No vino'}</span></td><td class="nota-tabla">${escaparTexto(registro.nota_del_registro || '—')}</td><td class="monto-tabla">$${Number(registro.monto_en_dolares || 0).toFixed(2)}</td></tr>`;
+    return `<tr><td>${formatearFecha(registro.fecha_del_registro)}</td><td>${escaparTexto(miembroDelGrupo?.nombre_completo ?? 'Miembro eliminado')}</td><td><span class="etiqueta ${registro.asistio ? 'etiqueta-vino' : 'etiqueta-ausente'}">${registro.asistio ? 'Sí vino a ensayo' : 'No vino'}</span></td><td class="monto-tabla">$${Number(registro.monto_en_dolares || 0).toFixed(2)}</td></tr>`;
   }).join('');
   contenidoPrincipal.innerHTML = `
     <section class="vista" aria-labelledby="titulo-vista">
@@ -108,15 +111,33 @@ function mostrarTablaDelMes() {
       <div class="selector-mes"><button class="boton-icono boton-mes" data-mover-mes="-1" aria-label="Mes anterior"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button><h2>${nombresDeMeses[mesMostrado.getMonth()]} <span>${anioMostrado}</span></h2><button class="boton-icono boton-mes" data-mover-mes="1" aria-label="Mes siguiente"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button></div>
       <div class="tarjeta-totales"><div class="resumen-linea"><div><p class="sobretitulo">DÓLARES DEL MES</p><h2>Por miembro</h2></div><span class="insignia-dolar">$</span></div>
       ${totalesDelMes.length ? `<ul class="lista-totales">${totalesDelMes.map((totalDelMiembro) => `<li><span>${escaparTexto(totalDelMiembro.nombre)}</span><strong>$${totalDelMiembro.total.toFixed(2)}</strong></li>`).join('')}</ul>` : '<p class="texto-suave">Agrega miembros para ver sus totales.</p>'}</div>
-      <div class="resumen-linea encabezado-registros"><h2>Registros</h2><span>${registrosDelMes.length} ${registrosDelMes.length === 1 ? 'registro' : 'registros'}</span></div>
-      ${registrosDelMes.length ? `<div class="envoltura-tabla"><table><thead><tr><th>Fecha</th><th>Miembro</th><th>Asistencia</th><th>Nota</th><th>Monto</th></tr></thead><tbody>${filasDeLaTabla}</tbody></table></div>` : crearEstadoVacio('Todavía no hay registros', 'Cuando marques una asistencia, aparecerá aquí.')}
+      <div class="tarjeta-dia"><div class="selector-dia"><div><p class="sobretitulo">VER ASISTENCIA</p><h2>Elige un día</h2></div><input id="selector-dia-mes" type="date" value="${diaSeleccionadoDelMes}" min="${mesEnFormatoISO}-01" max="${mesEnFormatoISO}-${ultimoDiaDelMes}" aria-label="Elige un día del mes"></div><h3 class="titulo-detalle-dia">Asistencia del ${formatearFecha(diaSeleccionadoDelMes)}</h3>${crearListaDeAsistenciaDelDia(miembrosDelGrupo, registrosDelDiaSeleccionado)}</div>
+      <div class="resumen-linea encabezado-registros"><h2>Registros del mes</h2><span>${registrosDelMes.length} ${registrosDelMes.length === 1 ? 'registro' : 'registros'}</span></div>
+      ${registrosDelMes.length ? `<div class="envoltura-tabla"><table><thead><tr><th>Fecha</th><th>Miembro</th><th>Asistencia</th><th>Monto</th></tr></thead><tbody>${filasDeLaTabla}</tbody></table></div>` : crearEstadoVacio('Todavía no hay registros', 'Cuando marques una asistencia, aparecerá aquí.')}
       <button class="enlace-respaldo" data-accion="respaldo">Guardar o restaurar un respaldo <span aria-hidden="true">→</span></button>
     </section>`;
   contenidoPrincipal.querySelectorAll('[data-mover-mes]').forEach((boton) => boton.addEventListener('click', () => {
     mesMostrado.setMonth(mesMostrado.getMonth() + Number(boton.dataset.moverMes));
+    diaSeleccionadoDelMes = `${mesMostrado.getFullYear()}-${String(mesMostrado.getMonth() + 1).padStart(2, '0')}-01`;
     mostrarTablaDelMes();
   }));
+  contenidoPrincipal.querySelector('#selector-dia-mes').addEventListener('change', (eventoDelSelector) => {
+    diaSeleccionadoDelMes = eventoDelSelector.currentTarget.value || `${mesEnFormatoISO}-01`;
+    mostrarTablaDelMes();
+  });
   contenidoPrincipal.querySelector('[data-accion="respaldo"]')?.addEventListener('click', () => navegarA('respaldo'));
+}
+
+// Lista a todas las personas para el día elegido y señala su estado de asistencia.
+function crearListaDeAsistenciaDelDia(miembrosDelGrupo, registrosDelDia) {
+  if (!miembrosDelGrupo.length) return crearEstadoVacio('No hay miembros todavía', 'Agrega miembros para consultar la asistencia del día.');
+  if (!registrosDelDia.length) return crearEstadoVacio('Sin registros para este día', 'Todavía no se ha marcado la asistencia de esta fecha.');
+  return `<ul class="lista-asistencia-dia">${miembrosDelGrupo.map((miembroDelGrupo) => {
+    const registroDelMiembro = registrosDelDia.find((registro) => registro.identificador_del_miembro === miembroDelGrupo.identificador);
+    const estadoDelMiembro = registroDelMiembro ? (registroDelMiembro.asistio ? 'Sí vino a ensayo' : 'No vino') : 'Sin marcar';
+    const claseDelMiembro = registroDelMiembro ? (registroDelMiembro.asistio ? 'dia-vino' : 'dia-ausente') : 'dia-pendiente';
+    return `<li><span>${escaparTexto(miembroDelGrupo.nombre_completo)}</span><strong class="${claseDelMiembro}">${estadoDelMiembro}</strong></li>`;
+  }).join('')}</ul>`;
 }
 
 // Permite agregar personas nuevas y muestra la lista actual del grupo.
