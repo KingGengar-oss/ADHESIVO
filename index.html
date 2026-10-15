@@ -22,6 +22,13 @@
     </button>
   </header>
 
+  <!-- Acceso visible a la instalación; la interfaz abre el aviso nativo al tocar el botón. -->
+  <aside id="aviso-instalacion" class="aviso-instalacion" aria-label="Instalar aplicación">
+    <span class="icono-instalacion" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg></span>
+    <div class="texto-instalacion"><strong>Instala Registro ADHESIVO</strong><p id="mensaje-instalacion">Agrégala a tu pantalla de inicio para abrirla como una app.</p></div>
+    <button id="boton-instalar" class="boton-instalar" type="button">Instalar</button>
+  </aside>
+
   <!-- El contenido de cada pestaña se administra desde interfaz.js. -->
   <main id="contenido-principal" class="contenido" tabindex="-1"></main>
 

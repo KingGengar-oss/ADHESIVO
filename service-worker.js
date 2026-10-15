@@ -3,7 +3,7 @@
 
 // IMPORTANTE: cambia esta versión cuando publiques archivos nuevos de la app.
 // para que los teléfonos descarguen la versión nueva.
-const NOMBRE_DE_LA_MEMORIA = 'registro-compartido-v5';
+const NOMBRE_DE_LA_MEMORIA = 'registro-compartido-v6';
 
 // Todos los archivos que la app necesita para funcionar sin internet.
 // Aquí hay que agregar también el CSS y demás archivos que haga la interfaz.

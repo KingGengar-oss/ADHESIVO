@@ -15,10 +15,53 @@ import {
 // Se guardan aquí las referencias y selecciones temporales de esta pantalla.
 const contenidoPrincipal = document.querySelector('#contenido-principal');
 const enlacesDeNavegacion = [...document.querySelectorAll('[data-pantalla]')];
+const avisoDeInstalacion = document.querySelector('#aviso-instalacion');
+const botonInstalarAplicacion = document.querySelector('#boton-instalar');
+const mensajeDeInstalacion = document.querySelector('#mensaje-instalacion');
 const nombresDeMeses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 let fechaSeleccionada = obtenerFechaDeHoy();
 let mesMostrado = new Date(`${fechaSeleccionada}T12:00:00`);
 let diaSeleccionadoDelMes = fechaSeleccionada;
+let avisoNativoDeInstalacion = null;
+
+// Guarda el aviso que entrega Chrome y deja visible el acceso de instalación.
+window.addEventListener('beforeinstallprompt', (eventoDeInstalacion) => {
+  eventoDeInstalacion.preventDefault();
+  avisoNativoDeInstalacion = eventoDeInstalacion;
+  botonInstalarAplicacion.textContent = 'Instalar';
+});
+
+// Oculta el acceso cuando el navegador confirma que la app ya fue instalada.
+window.addEventListener('appinstalled', () => {
+  avisoDeInstalacion.hidden = true;
+  avisoNativoDeInstalacion = null;
+});
+
+// Comprueba si la app ya está abierta en su ventana instalada.
+if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) {
+  avisoDeInstalacion.hidden = true;
+}
+
+// Usa el diálogo nativo o explica cómo instalar desde el menú del navegador.
+botonInstalarAplicacion.addEventListener('click', async () => {
+  if (avisoNativoDeInstalacion) {
+    avisoNativoDeInstalacion.prompt();
+    const resultadoDeInstalacion = await avisoNativoDeInstalacion.userChoice;
+    avisoNativoDeInstalacion = null;
+    if (resultadoDeInstalacion.outcome === 'accepted') {
+      mensajeDeInstalacion.textContent = 'Se está instalando. La app aparecerá en tu pantalla de inicio.';
+      avisoDeInstalacion.hidden = true;
+    } else {
+      mensajeDeInstalacion.textContent = 'Puedes instalarla cuando quieras con este botón.';
+    }
+    return;
+  }
+
+  const esSafariEnIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  mensajeDeInstalacion.textContent = esSafariEnIOS
+    ? 'En Safari, toca Compartir y luego “Agregar a pantalla de inicio”.'
+    : 'Abre el menú del navegador y elige “Instalar app” o “Agregar a pantalla de inicio”.';
+});
 
 // Convierte una fecha guardada en un texto legible sin depender de UTC.
 function formatearFecha(fechaEnFormatoISO) {
