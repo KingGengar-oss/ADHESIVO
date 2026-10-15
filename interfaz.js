@@ -166,11 +166,67 @@ function mostrarRespaldo() {
       <div class="saludo"><p class="sobretitulo">TUS DATOS</p><h1 id="titulo-vista">Respaldo</h1><p>Guarda una copia de tu registro o recupérala desde un archivo.</p></div>
       <article class="tarjeta-respaldo"><span class="icono-respaldo"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg></span><div><h2>Descargar una copia</h2><p>Guarda todos tus miembros y registros en un archivo .json.</p></div><button id="descargar-respaldo" class="boton-principal ancho-completo">Descargar respaldo</button></article>
       <article class="tarjeta-respaldo"><span class="icono-respaldo icono-restaurar"><svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L8 8m4-4 4 4M5 17v3h14v-3"/></svg></span><div><h2>Restaurar un respaldo</h2><p>Elige un archivo .json guardado anteriormente.</p></div><div class="aviso-reemplazo"><strong>Ten en cuenta</strong><span>La restauración reemplaza los miembros y registros que tienes ahora.</span></div><label class="boton-secundario ancho-completo selector-archivo" for="archivo-respaldo">Elegir archivo .json</label><input class="solo-lector" id="archivo-respaldo" type="file" accept="application/json,.json"></article>
+      <article class="tarjeta-respaldo tarjeta-actualizacion"><span class="icono-respaldo"><svg viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.7 9A7 7 0 0 1 18 6.5L20 12M4 12l2 5.5A7 7 0 0 0 18.3 15"/></svg></span><div><h2>Actualizar aplicación</h2><p>Busca cambios nuevos publicados y recarga la app si hay una versión reciente.</p></div><button id="boton-actualizar-app" class="boton-secundario ancho-completo">Buscar actualizaciones</button><p id="estado-actualizacion" class="estado-actualizacion" aria-live="polite"></p></article>
       <button class="enlace-respaldo" data-accion="volver">← Volver a Hoy</button>
     </section>`;
   contenidoPrincipal.querySelector('#descargar-respaldo').addEventListener('click', descargarRespaldo);
   contenidoPrincipal.querySelector('#archivo-respaldo').addEventListener('change', restaurarArchivoDeRespaldo);
+  contenidoPrincipal.querySelector('#boton-actualizar-app').addEventListener('click', actualizarAplicacion);
   contenidoPrincipal.querySelector('[data-accion="volver"]').addEventListener('click', () => navegarA('hoy'));
+}
+
+// Consulta el servidor y recarga la app solo si encuentra una versión nueva.
+async function actualizarAplicacion(eventoDelBoton) {
+  const botonDeActualizacion = eventoDelBoton.currentTarget;
+  const mensajeDeActualizacion = contenidoPrincipal.querySelector('#estado-actualizacion');
+  botonDeActualizacion.disabled = true;
+  mensajeDeActualizacion.textContent = 'Buscando actualizaciones…';
+  try {
+    if (!('serviceWorker' in navigator)) throw new Error('Este navegador no admite actualizaciones de la aplicación.');
+    let registroDelServiceWorker = await navigator.serviceWorker.getRegistration();
+    if (!registroDelServiceWorker) registroDelServiceWorker = await navigator.serviceWorker.register('./service-worker.js');
+
+    let seEncontroUnaVersionNueva = false;
+    let seActivoUnaVersionNueva = false;
+    let escucharCambioDeControlador;
+    let escucharNuevaInstalacion;
+    const cambioDeControlador = new Promise((resolverCambio) => {
+      escucharCambioDeControlador = () => {
+        seActivoUnaVersionNueva = true;
+        resolverCambio();
+        window.location.reload();
+      };
+      navigator.serviceWorker.addEventListener('controllerchange', escucharCambioDeControlador, { once: true });
+    });
+    const instalacionDetectada = new Promise((resolverInstalacion) => {
+      escucharNuevaInstalacion = () => {
+        seEncontroUnaVersionNueva = true;
+        const workerEnInstalacion = registroDelServiceWorker.installing;
+        if (!workerEnInstalacion) return resolverInstalacion();
+        workerEnInstalacion.addEventListener('statechange', () => {
+          if (workerEnInstalacion.state === 'activated' || workerEnInstalacion.state === 'redundant') resolverInstalacion();
+        });
+      };
+      registroDelServiceWorker.addEventListener('updatefound', escucharNuevaInstalacion, { once: true });
+    });
+
+    await registroDelServiceWorker.update();
+    if (registroDelServiceWorker.waiting) registroDelServiceWorker.waiting.postMessage({ tipo: 'ACTIVAR_ACTUALIZACION' });
+    if (seEncontroUnaVersionNueva) await Promise.race([instalacionDetectada, cambioDeControlador]);
+    if (seActivoUnaVersionNueva) return;
+    if (seEncontroUnaVersionNueva) {
+      mensajeDeActualizacion.textContent = 'Actualización instalada. Recargando…';
+      window.location.reload();
+      return;
+    }
+    navigator.serviceWorker.removeEventListener('controllerchange', escucharCambioDeControlador);
+    registroDelServiceWorker.removeEventListener('updatefound', escucharNuevaInstalacion);
+    mensajeDeActualizacion.textContent = 'Ya tienes la versión más reciente.';
+  } catch (error) {
+    mensajeDeActualizacion.textContent = error.message || 'No se pudo buscar una actualización. Revisa tu conexión e inténtalo de nuevo.';
+  } finally {
+    botonDeActualizacion.disabled = false;
+  }
 }
 
 // Lee el archivo elegido y confirma que se puede reemplazar la información actual.

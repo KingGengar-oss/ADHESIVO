@@ -1,9 +1,9 @@
 // service-worker.js
 // Guarda los archivos de la app en el teléfono para que abra sin internet.
 
-// IMPORTANTE: cada vez que cambies algún archivo de la app, sube el número (v1 -> v2)
+// IMPORTANTE: cambia esta versión cuando publiques archivos nuevos de la app.
 // para que los teléfonos descarguen la versión nueva.
-const NOMBRE_DE_LA_MEMORIA = 'registro-compartido-v4';
+const NOMBRE_DE_LA_MEMORIA = 'registro-compartido-v5';
 
 // Todos los archivos que la app necesita para funcionar sin internet.
 // Aquí hay que agregar también el CSS y demás archivos que haga la interfaz.
@@ -40,6 +40,11 @@ self.addEventListener('activate', (evento) => {
     )
   );
   self.clients.claim();
+});
+
+// Permite a la interfaz solicitar la activación inmediata de la versión descargada.
+self.addEventListener('message', (evento) => {
+  if (evento.data?.tipo === 'ACTIVAR_ACTUALIZACION') self.skipWaiting();
 });
 
 // Cada vez que la app pide un archivo: primero busca en lo guardado, y si no está, va a internet
