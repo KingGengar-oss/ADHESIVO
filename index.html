@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <!-- Metadatos para que la app se adapte a pantallas y zonas seguras del teléfono. -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4f7f3">
+  <meta name="description" content="Registro diario compartido de asistencia del grupo.">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./estilos.css">
+  <title>Registro Compartido</title>
+</head>
+<body>
+  <!-- Encabezado persistente con identidad de la app y acceso visible al respaldo. -->
+  <header class="encabezado">
+    <a class="marca" href="#hoy" aria-label="Registro Compartido, ir a Hoy">
+      <span class="marca-icono" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3v3m10-3v3M4 9h16M6 5h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/><path d="m8 14 2 2 5-5"/></svg></span>
+      <span><strong>Registro</strong><small>Compartido</small></span>
+    </a>
+    <button id="abrir-respaldo" class="boton-icono" aria-label="Abrir respaldo" title="Respaldo">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>
+    </button>
+  </header>
+
+  <!-- El contenido de cada pestaña se administra desde interfaz.js. -->
+  <main id="contenido-principal" class="contenido" tabindex="-1"></main>
+
+  <!-- Navegación inferior con áreas de toque amplias. -->
+  <nav class="navegacion" aria-label="Navegación principal">
+    <a href="#hoy" data-pantalla="hoy" aria-current="page"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-6v-7h-4v7H4a1 1 0 0 1-1-1z"/></svg><span>Hoy</span></a>
+    <a href="#tabla" data-pantalla="tabla"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 10h16M9 5v14m6-14v14"/></svg><span>Tabla</span></a>
+    <a href="#miembros" data-pantalla="miembros"><svg viewBox="0 0 24 24"><path d="M16 20v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1m6-9a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7-7a4 4 0 0 1 0 8m1 3a4 4 0 0 1 3 4v1"/></svg><span>Miembros</span></a>
+  </nav>
+
+  <!-- La inicialización y la interfaz son módulos locales para uso sin internet. -->
+  <script type="module" src="./iniciar-aplicacion.js"></script>
+  <script type="module" src="./interfaz.js"></script>
+</body>
+</html>
